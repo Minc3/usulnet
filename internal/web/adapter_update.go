@@ -7,6 +7,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,18 +76,43 @@ func (a *updateAdapter) GetChangelog(ctx context.Context, containerID string) (s
 	return "", nil
 }
 
+// updateApplyTimeout bounds a background container update (backup, pull,
+// recreate, health wait, scans).
+const updateApplyTimeout = 30 * time.Minute
+
+// Apply starts a container update in the background and returns once it has
+// been accepted. An update routinely outlives the HTTP server's write timeout
+// (image pull, backup, health wait), so the request must not block on it. The
+// outcome is recorded in the update history, including any failure reason.
 func (a *updateAdapter) Apply(ctx context.Context, containerID string, backup bool, targetVersion string) error {
 	if a.svc == nil {
 		return ErrServiceNotConfigured
 	}
+	if a.svc.IsUpdateInProgress(containerID) {
+		return fmt.Errorf("an update is already in progress for this container")
+	}
+	hostID := resolveHostID(ctx, a.hostID)
 	opts := &models.UpdateOptions{
 		ContainerID:   containerID,
 		TargetVersion: targetVersion,
 		BackupVolumes: backup,
 		SecurityScan:  true,
 	}
-	_, err := a.svc.UpdateContainer(ctx, resolveHostID(ctx, a.hostID), opts)
-	return err
+
+	bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), updateApplyTimeout)
+	go func() {
+		defer cancel()
+		result, err := a.svc.UpdateContainer(bg, hostID, opts)
+		switch {
+		case err != nil:
+			slog.Error("container update failed", "container", containerID, "error", err)
+		case result != nil && !result.Success:
+			slog.Warn("container update did not complete", "container", containerID, "reason", result.ErrorMessage, "rolled_back", result.WasRolledBack)
+		case result != nil:
+			slog.Info("container update finished", "container", containerID, "from", result.FromVersion, "to", result.ToVersion)
+		}
+	}()
+	return nil
 }
 
 func (a *updateAdapter) Rollback(ctx context.Context, updateID string) error {
@@ -123,6 +149,9 @@ func (a *updateAdapter) GetHistory(ctx context.Context) ([]UpdateHistoryView, er
 			Status:        string(u.Status),
 			UpdatedAt:     u.CreatedAt.Format("2006-01-02 15:04"),
 			CanRollback:   u.CanRollback(),
+		}
+		if u.ErrorMessage != nil {
+			v.ErrorMessage = *u.ErrorMessage
 		}
 		if u.DurationMs != nil {
 			dur := time.Duration(*u.DurationMs) * time.Millisecond

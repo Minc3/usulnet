@@ -2022,15 +2022,15 @@ func (h *Handler) UpdateApplyTempl(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to apply update", "container", id, "error", err)
 		h.setFlash(w, r, "error", "Update failed: "+err.Error())
 	} else {
-		h.setFlash(w, r, "success", "Update started successfully")
+		h.setFlash(w, r, "success", "Update started. Progress and the result are shown under History & Rollback.")
 	}
 
 	if r.Header.Get("HX-Request") == "true" {
-		w.Header().Set("HX-Redirect", "/updates")
+		w.Header().Set("HX-Redirect", "/updates?tab=history")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	h.redirect(w, r, "/updates")
+	h.redirect(w, r, "/updates?tab=history")
 }
 
 // UpdateManual handles manual update of a container to a specific version.
@@ -2058,10 +2058,10 @@ func (h *Handler) UpdateManual(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to apply manual update", "container", containerID, "version", targetVersion, "error", err)
 		h.setFlash(w, r, "error", "Update failed: "+err.Error())
 	} else {
-		h.setFlash(w, r, "success", "Manual update to "+targetVersion+" started successfully")
+		h.setFlash(w, r, "success", "Update to "+targetVersion+" started. Progress and the result are shown under History & Rollback.")
 	}
 
-	http.Redirect(w, r, "/updates", http.StatusSeeOther)
+	http.Redirect(w, r, "/updates?tab=history", http.StatusSeeOther)
 }
 
 // UpdateRollbackTempl rolls back a previous update.

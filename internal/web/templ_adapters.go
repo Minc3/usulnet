@@ -946,6 +946,7 @@ func ToTemplUpdatesListData(p *PageData, available []UpdateView, history []Updat
 			Duration:      h.Duration,
 			UpdatedAt:     h.UpdatedAt,
 			CanRollback:   h.CanRollback,
+			ErrorMessage:  h.ErrorMessage,
 		})
 	}
 

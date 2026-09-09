@@ -47,6 +47,27 @@ func (m *mockVariableStore) Create(_ context.Context, v *models.ConfigVariable) 
 	return nil
 }
 
+func (m *mockVariableStore) Upsert(_ context.Context, v *models.ConfigVariable) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.createErr != nil {
+		return m.createErr
+	}
+	for id, existing := range m.variables {
+		if existing.Name == v.Name && existing.Scope == v.Scope {
+			cp := *v
+			cp.ID = id
+			cp.Version = existing.Version + 1
+			m.variables[id] = &cp
+			v.ID = id
+			return nil
+		}
+	}
+	cp := *v
+	m.variables[v.ID] = &cp
+	return nil
+}
+
 func (m *mockVariableStore) GetByID(_ context.Context, id uuid.UUID) (*models.ConfigVariable, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -952,6 +973,45 @@ func TestGetVariableHistory_MasksSecrets(t *testing.T) {
 	for _, h := range history {
 		if h.Value != "********" {
 			t.Errorf("history value = %q, want masked", h.Value)
+		}
+	}
+}
+
+func TestUpsertSetting_CreatesThenUpdatesInPlace(t *testing.T) {
+	svc, store, _, _, _ := newTestService()
+	ctx := context.Background()
+
+	// Dotted lowercase names are rejected by CreateVariable but must be
+	// accepted by UpsertSetting (the settings page uses them).
+	if err := svc.UpsertSetting(ctx, "settings.app_name", "usulnet", nil); err != nil {
+		t.Fatalf("first upsert: unexpected error: %v", err)
+	}
+	if err := svc.UpsertSetting(ctx, "settings.app_name", "renamed", nil); err != nil {
+		t.Fatalf("second upsert: unexpected error: %v", err)
+	}
+
+	v, err := store.GetByName(ctx, "settings.app_name", models.VariableScopeGlobal, nil)
+	if err != nil {
+		t.Fatalf("GetByName: %v", err)
+	}
+	if v.Value != "renamed" {
+		t.Errorf("value = %q, want %q", v.Value, "renamed")
+	}
+	if v.Type != models.VariableTypePlain || v.Scope != models.VariableScopeGlobal {
+		t.Errorf("type/scope = %q/%q, want plain/global", v.Type, v.Scope)
+	}
+	if len(store.variables) != 1 {
+		t.Errorf("stored variables = %d, want 1 (upsert must not duplicate)", len(store.variables))
+	}
+}
+
+func TestUpsertSetting_RejectsBlankOrWhitespaceName(t *testing.T) {
+	svc, _, _, _, _ := newTestService()
+	ctx := context.Background()
+
+	for _, name := range []string{"", "   ", "has space", "has\ttab"} {
+		if err := svc.UpsertSetting(ctx, name, "x", nil); err == nil {
+			t.Errorf("name %q: expected error, got nil", name)
 		}
 	}
 }

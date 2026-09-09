@@ -133,6 +133,14 @@ func (a *configAdapter) UpdateVariable(ctx context.Context, v *ConfigVarView) er
 	return err
 }
 
+// UpsertSetting creates or updates a global application setting by name.
+func (a *configAdapter) UpsertSetting(ctx context.Context, name, value string) error {
+	if a.svc == nil {
+		return ErrServiceNotConfigured
+	}
+	return a.svc.UpsertSetting(ctx, name, value, nil)
+}
+
 func (a *configAdapter) DeleteVariable(ctx context.Context, id string) error {
 	if a.svc == nil {
 		return ErrServiceNotConfigured

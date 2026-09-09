@@ -307,7 +307,7 @@ templ Sidebar(active string, user *types.UserData, stats *types.StatsData, editi
 // the initial collapse state from server-side preferences, with localStorage
 // as the immediate toggle store for responsiveness.
 templ sidebarSection(key string, label string, prefs *types.SidebarPreferences) {
-	<div x-data={ fmt.Sprintf("{ open: !%t }", prefs.IsCollapsed(key)) } x-init={ fmt.Sprintf("try { var s = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}'); if ('%s' in s) open = !s['%s']; } catch(e) {}", key, key) }>
+	<div x-data={ fmt.Sprintf("{ open: !%t }", prefs.IsCollapsed(key)) } x-init={ fmt.Sprintf("(() => { try { var s = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}'); if ('%s' in s) open = !s['%s']; } catch(e) {} })()", key, key) }>
 		<button
 			@click={ fmt.Sprintf("open = !open; window._sidebarToggleSection('%s', !open)", key) }
 			:aria-expanded="open ? 'true' : 'false'"

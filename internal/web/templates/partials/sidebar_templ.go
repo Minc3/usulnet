@@ -295,7 +295,7 @@ func Sidebar(active string, user *types.UserData, stats *types.StatsData, editio
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<!-- Security: every defensive surface, including Trivy CVE\n\t\t\t     scanning, host firewall, mesh VPN, runtime detection. -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<!-- Security: every defensive surface, including Trivy CVE\r\n\t\t\t     scanning, host firewall, mesh VPN, runtime detection. -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -481,7 +481,7 @@ func Sidebar(active string, user *types.UserData, stats *types.StatsData, editio
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<!-- Platform: integrations, build tooling, terminals,\n\t\t\t     external connections. The catch-all for tooling that\n\t\t\t     isn't pure compute, operations, or security. -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<!-- Platform: integrations, build tooling, terminals,\r\n\t\t\t     external connections. The catch-all for tooling that\r\n\t\t\t     isn't pure compute, operations, or security. -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -822,7 +822,7 @@ func Sidebar(active string, user *types.UserData, stats *types.StatsData, editio
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</p></div><form method=\"POST\" action=\"/logout\" style=\"display:inline\"><button type=\"submit\" class=\"p-2 text-gray-400 hover:text-red-400 transition-colors\" title=\"Logout\" aria-label=\"Logout\"><i class=\"fas fa-sign-out-alt\"></i></button></form></div></div></nav><!-- Sidebar scroll restoration & section toggle persistence --><script>\n\t\t(function() {\n\t\t\tfunction restoreScroll() {\n\t\t\t\tvar el = document.getElementById('sidebar-scroll');\n\t\t\t\tif (!el) return;\n\t\t\t\tvar saved = sessionStorage.getItem('sidebar-scroll');\n\t\t\t\tif (saved) el.scrollTop = parseInt(saved, 10);\n\t\t\t}\n\t\t\tvar el = document.getElementById('sidebar-scroll');\n\t\t\tif (!el) return;\n\t\t\tel.addEventListener('scroll', function() {\n\t\t\t\tsessionStorage.setItem('sidebar-scroll', el.scrollTop);\n\t\t\t});\n\t\t\tif (document.fonts && document.fonts.ready) {\n\t\t\t\tdocument.fonts.ready.then(restoreScroll);\n\t\t\t} else {\n\t\t\t\twindow.addEventListener('load', restoreScroll);\n\t\t\t}\n\t\t\tdocument.addEventListener('htmx:afterSettle', restoreScroll);\n\n\t\t\t// Persist collapse toggle to backend (debounced)\n\t\t\tvar _saveTimer = null;\n\t\t\twindow._sidebarToggleSection = function(section, collapsed) {\n\t\t\t\t// Save to localStorage for immediate cross-page consistency\n\t\t\t\ttry {\n\t\t\t\t\tvar state = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}');\n\t\t\t\t\tstate[section] = collapsed;\n\t\t\t\t\tlocalStorage.setItem('usulnet-sidebar-collapsed', JSON.stringify(state));\n\t\t\t\t} catch(e) {}\n\n\t\t\t\t// Debounced save to backend\n\t\t\t\tclearTimeout(_saveTimer);\n\t\t\t\t_saveTimer = setTimeout(function() {\n\t\t\t\t\tvar csrfMeta = document.querySelector('meta[name=\"csrf-token\"]');\n\t\t\t\t\tvar headers = { 'Content-Type': 'application/json' };\n\t\t\t\t\tif (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;\n\t\t\t\t\ttry {\n\t\t\t\t\t\tvar allState = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}');\n\t\t\t\t\t\tfetch('/profile/sidebar-prefs', {\n\t\t\t\t\t\t\tmethod: 'PUT',\n\t\t\t\t\t\t\theaders: headers,\n\t\t\t\t\t\t\tbody: JSON.stringify({ collapsed: allState })\n\t\t\t\t\t\t});\n\t\t\t\t\t} catch(e) {}\n\t\t\t\t}, 500);\n\t\t\t};\n\t\t})();\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</p></div><form method=\"POST\" action=\"/logout\" style=\"display:inline\"><button type=\"submit\" class=\"p-2 text-gray-400 hover:text-red-400 transition-colors\" title=\"Logout\" aria-label=\"Logout\"><i class=\"fas fa-sign-out-alt\"></i></button></form></div></div></nav><!-- Sidebar scroll restoration & section toggle persistence --><script>\r\n\t\t(function() {\r\n\t\t\tfunction restoreScroll() {\r\n\t\t\t\tvar el = document.getElementById('sidebar-scroll');\r\n\t\t\t\tif (!el) return;\r\n\t\t\t\tvar saved = sessionStorage.getItem('sidebar-scroll');\r\n\t\t\t\tif (saved) el.scrollTop = parseInt(saved, 10);\r\n\t\t\t}\r\n\t\t\tvar el = document.getElementById('sidebar-scroll');\r\n\t\t\tif (!el) return;\r\n\t\t\tel.addEventListener('scroll', function() {\r\n\t\t\t\tsessionStorage.setItem('sidebar-scroll', el.scrollTop);\r\n\t\t\t});\r\n\t\t\tif (document.fonts && document.fonts.ready) {\r\n\t\t\t\tdocument.fonts.ready.then(restoreScroll);\r\n\t\t\t} else {\r\n\t\t\t\twindow.addEventListener('load', restoreScroll);\r\n\t\t\t}\r\n\t\t\tdocument.addEventListener('htmx:afterSettle', restoreScroll);\r\n\r\n\t\t\t// Persist collapse toggle to backend (debounced)\r\n\t\t\tvar _saveTimer = null;\r\n\t\t\twindow._sidebarToggleSection = function(section, collapsed) {\r\n\t\t\t\t// Save to localStorage for immediate cross-page consistency\r\n\t\t\t\ttry {\r\n\t\t\t\t\tvar state = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}');\r\n\t\t\t\t\tstate[section] = collapsed;\r\n\t\t\t\t\tlocalStorage.setItem('usulnet-sidebar-collapsed', JSON.stringify(state));\r\n\t\t\t\t} catch(e) {}\r\n\r\n\t\t\t\t// Debounced save to backend\r\n\t\t\t\tclearTimeout(_saveTimer);\r\n\t\t\t\t_saveTimer = setTimeout(function() {\r\n\t\t\t\t\tvar csrfMeta = document.querySelector('meta[name=\"csrf-token\"]');\r\n\t\t\t\t\tvar headers = { 'Content-Type': 'application/json' };\r\n\t\t\t\t\tif (csrfMeta) headers['X-CSRF-Token'] = csrfMeta.content;\r\n\t\t\t\t\ttry {\r\n\t\t\t\t\t\tvar allState = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}');\r\n\t\t\t\t\t\tfetch('/profile/sidebar-prefs', {\r\n\t\t\t\t\t\t\tmethod: 'PUT',\r\n\t\t\t\t\t\t\theaders: headers,\r\n\t\t\t\t\t\t\tbody: JSON.stringify({ collapsed: allState })\r\n\t\t\t\t\t\t});\r\n\t\t\t\t\t} catch(e) {}\r\n\t\t\t\t}, 500);\r\n\t\t\t};\r\n\t\t})();\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -872,9 +872,9 @@ func sidebarSection(key string, label string, prefs *types.SidebarPreferences) t
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("try { var s = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}'); if ('%s' in s) open = !s['%s']; } catch(e) {}", key, key))
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("(() => { try { var s = JSON.parse(localStorage.getItem('usulnet-sidebar-collapsed') || '{}'); if ('%s' in s) open = !s['%s']; } catch(e) {} })()", key, key))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/partials/sidebar.templ`, Line: 310, Col: 234}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/partials/sidebar.templ`, Line: 310, Col: 248}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {

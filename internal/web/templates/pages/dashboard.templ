@@ -164,10 +164,10 @@ templ Dashboard(data DashboardData) {
 					<h2 class="font-semibold text-white">Recent Containers</h2>
 					<a href="/containers" class="text-sm text-primary-400 hover:text-primary-300">View all →</a>
 				</div>
+				<div id="recent-containers-loading" class="p-4 text-center text-gray-500 htmx-indicator">
+					<i aria-hidden="true" class="fas fa-spinner fa-spin mr-2"></i>Loading containers...
+				</div>
 				<div class="divide-y divide-dark-600" hx-get="/partials/containers?limit=5" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-indicator="#recent-containers-loading">
-					<div id="recent-containers-loading" class="p-4 text-center text-gray-500 htmx-indicator">
-						<i aria-hidden="true" class="fas fa-spinner fa-spin mr-2"></i>Loading containers...
-					</div>
 					if len(data.RecentContainers) == 0 {
 						<div class="p-8 text-center text-gray-500">
 							<i aria-hidden="true" class="fas fa-cube text-3xl mb-3 opacity-50"></i>
@@ -187,10 +187,10 @@ templ Dashboard(data DashboardData) {
 					<h2 class="font-semibold text-white">Recent Events</h2>
 					<a href="/events" class="text-sm text-primary-400 hover:text-primary-300">View all →</a>
 				</div>
+				<div id="recent-events-loading" class="p-4 text-center text-gray-500 htmx-indicator">
+					<i aria-hidden="true" class="fas fa-spinner fa-spin mr-2"></i>Loading events...
+				</div>
 				<div class="divide-y divide-dark-600 max-h-96 overflow-y-auto" hx-get="/partials/events?limit=10" hx-trigger="load, every 10s" hx-swap="innerHTML" hx-indicator="#recent-events-loading">
-					<div id="recent-events-loading" class="p-4 text-center text-gray-500 htmx-indicator">
-						<i aria-hidden="true" class="fas fa-spinner fa-spin mr-2"></i>Loading events...
-					</div>
 					if len(data.RecentEvents) == 0 {
 						<div class="p-8 text-center text-gray-500">
 							<i aria-hidden="true" class="fas fa-stream text-3xl mb-3 opacity-50"></i>

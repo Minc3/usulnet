@@ -40,7 +40,7 @@ func EmptyStateCatalogBackups() components.EmptyStateData {
 		What:  "Compressed and verified snapshots of your volumes, configurations, and stacks.",
 		Why:   "Set up a nightly schedule so a bad deploy or compromised image is one restore away from recovery.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New schedule", Href: "/backups", Icon: "fa-plus", Primary: true},
+			{Label: "New schedule", Href: "/backups/schedules", Icon: "fa-plus", Primary: true},
 			{Label: "Read the docs", Href: "/docs/installation.md"},
 		},
 	}
@@ -54,7 +54,7 @@ func EmptyStateCatalogBackupVerify() components.EmptyStateData {
 		What:  "Sandboxed restore tests that confirm each backup is actually recoverable.",
 		Why:   "A backup that never restored is a backup that won't restore. Schedule periodic verifies and learn before the incident, not during.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New verification", Href: "/backup-verify", Icon: "fa-plus", Primary: true},
+			{Label: "New verification", Href: "/backup-verify/schedules/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -80,7 +80,7 @@ func EmptyStateCatalogCrontab() components.EmptyStateData {
 		What:  "Schedule shell commands, docker exec calls, and HTTP webhooks across your hosts.",
 		Why:   "Centralise nightly cleanup, healthcheck polls, and ad-hoc maintenance instead of editing crontabs by SSH.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New cron job", Href: "/crontab", Icon: "fa-plus", Primary: true},
+			{Label: "New cron job", Href: "/crontab/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -106,7 +106,7 @@ func EmptyStateCatalogFirewall() components.EmptyStateData {
 		What:  "Manage UFW / iptables / nftables rules per host without SSH.",
 		Why:   "Block public access to admin ports, rate-limit APIs, and stage rule changes before applying them.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New rule", Href: "/firewall", Icon: "fa-plus", Primary: true},
+			{Label: "New rule", Href: "/firewall/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -119,7 +119,7 @@ func EmptyStateCatalogImageBuilder() components.EmptyStateData {
 		What:  "Build, tag, and (optionally) sign Docker images from the UI with live log streaming.",
 		Why:   "Skip the local Dockerfile dance for one-off builds. Useful for patching base images or rebuilding from a Git tag.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New build", Href: "/image-builder", Icon: "fa-plus", Primary: true},
+			{Label: "New build", Href: "/image-builder/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -148,7 +148,7 @@ func EmptyStateCatalogProxy() components.EmptyStateData {
 		What:  "Manage Nginx Proxy Manager or Caddy upstream routes, ACME certificates, and access lists.",
 		Why:   "Expose stacks to the public internet without hand-editing nginx.conf or wrestling with Let's Encrypt rate limits.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "Setup connection", Href: "/proxy", Icon: "fa-plug", Primary: true},
+			{Label: "Setup connection", Href: "/proxy/setup", Icon: "fa-plug", Primary: true},
 		},
 	}
 }
@@ -161,7 +161,7 @@ func EmptyStateCatalogRollback() components.EmptyStateData {
 		What:  "Policies that watch healthchecks and container crashes, and roll back to the last good version on failure.",
 		Why:   "Make production safer by undoing a bad deploy in seconds instead of waking up on-call.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New policy", Href: "/rollback", Icon: "fa-plus", Primary: true},
+			{Label: "New policy", Href: "/rollback/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -174,7 +174,7 @@ func EmptyStateCatalogSSLObservatory() components.EmptyStateData {
 		What:  "Continuous TLS certificate scanning with grades, expiry alerts, and protocol / cipher inventory.",
 		Why:   "Catch certificates about to expire and weak ciphers before your users (or a security audit) do.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "Add target", Href: "/ssl", Icon: "fa-plus", Primary: true},
+			{Label: "Add target", Href: "/ssl/targets/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }
@@ -187,7 +187,7 @@ func EmptyStateCatalogWireGuard() components.EmptyStateData {
 		What:  "Manage peers, interfaces, and a master-to-agent mesh over WireGuard with one-time QR config delivery.",
 		Why:   "Connect your laptop, edge nodes, and branch offices without exposing admin ports to the public internet.",
 		CTAs: []components.EmptyStateCTA{
-			{Label: "New interface", Href: "/wireguard", Icon: "fa-plus", Primary: true},
+			{Label: "New interface", Href: "/wireguard/new", Icon: "fa-plus", Primary: true},
 		},
 	}
 }

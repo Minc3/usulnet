@@ -217,6 +217,7 @@ type ConfigService interface {
 	GetVariable(ctx context.Context, id string) (*ConfigVarView, error)
 	CreateVariable(ctx context.Context, v *ConfigVarView) error
 	UpdateVariable(ctx context.Context, v *ConfigVarView) error
+	UpsertSetting(ctx context.Context, name, value string) error
 	DeleteVariable(ctx context.Context, id string) error
 	ListTemplates(ctx context.Context) ([]interface{}, error)
 	CreateTemplate(ctx context.Context, input models.CreateTemplateInput, userID *uuid.UUID) (*models.ConfigTemplate, error)
@@ -1695,11 +1696,11 @@ func (h *Handler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if failed > 0 {
-		h.setFlash(w, r, "warning", fmt.Sprintf("Updated %d containers, %d failed", succeeded, failed))
+		h.setFlash(w, r, "warning", fmt.Sprintf("Started %d updates, %d could not be started. Results are shown under History & Rollback.", succeeded, failed))
 	} else {
-		h.setFlash(w, r, "success", fmt.Sprintf("Successfully updated %d containers", succeeded))
+		h.setFlash(w, r, "success", fmt.Sprintf("Started %d updates. Results are shown under History & Rollback.", succeeded))
 	}
-	h.redirect(w, r, "/updates")
+	h.redirect(w, r, "/updates?tab=history")
 }
 
 // ============================================================================

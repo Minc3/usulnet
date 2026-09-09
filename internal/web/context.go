@@ -448,6 +448,7 @@ type UpdateHistoryView struct {
 	Duration      string `json:"duration"`
 	UpdatedAt     string `json:"updated_at"`
 	CanRollback   bool   `json:"can_rollback"`
+	ErrorMessage  string `json:"error_message,omitempty"`
 }
 
 // UpdatePolicyView for auto-update policy management.

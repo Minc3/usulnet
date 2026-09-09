@@ -24,6 +24,7 @@ import (
 // VariableStore provides access to configuration variables.
 type VariableStore interface {
 	Create(ctx context.Context, v *models.ConfigVariable) error
+	Upsert(ctx context.Context, v *models.ConfigVariable) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.ConfigVariable, error)
 	GetByName(ctx context.Context, name string, scope models.VariableScope, scopeID *string) (*models.ConfigVariable, error)
 	Update(ctx context.Context, v *models.ConfigVariable) error
@@ -176,6 +177,40 @@ func (s *Service) CreateVariable(ctx context.Context, input models.CreateVariabl
 		"scope", v.Scope)
 
 	return v, nil
+}
+
+// UpsertSetting creates or updates a global application setting by name.
+//
+// Application settings use dotted lowercase keys (e.g. "settings.app_name")
+// rather than the uppercase env-style names enforced by CreateVariable, and
+// are stored as plain global-scope variables. Existing values are updated in
+// place so re-saving the settings page never collides on the unique
+// (name, scope) index.
+func (s *Service) UpsertSetting(ctx context.Context, name, value string, userID *uuid.UUID) error {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.ContainsAny(name, " \t\r\n") {
+		return errors.InvalidInput("setting name must be non-empty and contain no whitespace")
+	}
+
+	now := time.Now()
+	v := &models.ConfigVariable{
+		ID:        uuid.New(),
+		Name:      name,
+		Value:     value,
+		Type:      models.VariableTypePlain,
+		Scope:     models.VariableScopeGlobal,
+		Version:   1,
+		CreatedBy: userID,
+		UpdatedBy: userID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.variableRepo.Upsert(ctx, v); err != nil {
+		return err
+	}
+
+	s.logAudit(ctx, "upsert", "setting", v.ID.String(), v.Name, nil, &value, userID)
+	return nil
 }
 
 // GetVariable retrieves a variable by ID

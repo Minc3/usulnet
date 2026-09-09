@@ -14,6 +14,7 @@ import (
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 
 	"github.com/fr4nsys/usulnet/internal/models"
@@ -40,6 +41,8 @@ type Service struct {
 
 	// Running updates tracking
 	runningUpdates map[uuid.UUID]*runningUpdate
+	// runningContainers guards against two concurrent updates of the same container
+	runningContainers map[string]struct{}
 	runningMu      sync.RWMutex
 
 	// Semaphore to enforce MaxConcurrentUpdates
@@ -112,7 +115,7 @@ type DockerClient interface {
 	ContainerStop(ctx context.Context, containerID string, timeout *int) error
 	ContainerStart(ctx context.Context, containerID string) error
 	ContainerRemove(ctx context.Context, containerID string, force bool) error
-	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, name string) (string, error)
+	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, name string) (string, error)
 	ContainerRename(ctx context.Context, containerID, newName string) error
 	ContainerList(ctx context.Context) ([]ContainerInfo, error)
 
@@ -216,6 +219,7 @@ func NewService(
 		logger:           log.Named("update-service"),
 		config:           config,
 		runningUpdates:   make(map[uuid.UUID]*runningUpdate),
+		runningContainers: make(map[string]struct{}),
 		updateSem:        make(chan struct{}, maxConcurrent),
 	}
 }
@@ -324,6 +328,11 @@ func (s *Service) CheckContainerForUpdate(ctx context.Context, hostID uuid.UUID,
 func (s *Service) UpdateContainer(ctx context.Context, hostID uuid.UUID, opts *models.UpdateOptions) (*models.UpdateResult, error) {
 	log := s.logger.With("container_id", opts.ContainerID, "host_id", hostID)
 	log.Info("Starting container update")
+
+	if !s.reserveContainer(opts.ContainerID) {
+		return nil, errors.New(errors.CodeConflict, "an update is already in progress for this container")
+	}
+	defer s.releaseContainer(opts.ContainerID)
 
 	// Create update record
 	update := &models.Update{
@@ -513,7 +522,7 @@ func (s *Service) executeUpdate(ctx context.Context, update *models.Update, cont
 	newConfig := containerInfo.Config
 	newConfig.Image = newImage
 
-	newContainerID, err := s.dockerClient.ContainerCreate(ctx, newConfig, containerInfo.HostConfig, oldName)
+	newContainerID, err := s.dockerClient.ContainerCreate(ctx, newConfig, containerInfo.HostConfig, buildNetworkingConfig(containerInfo), oldName)
 	if err != nil {
 		log.Error("Container create failed", "error", err)
 		// Rollback: rename old container back
@@ -627,40 +636,133 @@ func (s *Service) rollbackContainer(ctx context.Context, update *models.Update, 
 	}
 }
 
-// waitForHealthy waits for a container to become healthy
+// Bounds for the post-update health wait.
+const (
+	maxHealthCheckWait  = 5 * time.Minute
+	healthPollInterval  = 3 * time.Second
+	defaultHealthProbe  = 30 * time.Second
+	defaultProbeRetries = 3
+)
+
+// waitForHealthy waits for a container to become healthy.
+//
+// The deadline is the larger of the configured wait and what the container's
+// own HEALTHCHECK needs (start period plus the full retry budget), capped at
+// maxHealthCheckWait. Docker only runs the first probe after one full
+// interval, so a fixed short wait would report "starting" containers as
+// failed and trigger a needless rollback. The container is polled every few
+// seconds and the wait ends early when it becomes healthy, stops running, or
+// Docker marks it unhealthy.
 func (s *Service) waitForHealthy(ctx context.Context, containerID string, wait time.Duration, maxRetries int) bool {
 	if maxRetries <= 0 {
 		maxRetries = 1
 	}
-	ticker := time.NewTicker(wait / time.Duration(maxRetries))
+	if wait <= 0 {
+		wait = defaultHealthProbe
+	}
+
+	deadline := wait
+	if info, err := s.dockerClient.ContainerInspect(ctx, containerID); err == nil {
+		if needed := healthcheckDuration(info); needed > deadline {
+			deadline = needed
+		}
+	}
+	if deadline > maxHealthCheckWait {
+		deadline = maxHealthCheckWait
+	}
+
+	pollEvery := deadline / time.Duration(maxRetries)
+	if pollEvery <= 0 || pollEvery > healthPollInterval {
+		pollEvery = healthPollInterval
+	}
+
+	timer := time.NewTimer(deadline)
+	defer timer.Stop()
+	ticker := time.NewTicker(pollEvery)
 	defer ticker.Stop()
 
-	for i := 0; i < maxRetries; i++ {
+	for {
 		select {
 		case <-ctx.Done():
 			return false
+		case <-timer.C:
+			return false
 		case <-ticker.C:
 			info, err := s.dockerClient.ContainerInspect(ctx, containerID)
-			if err != nil {
+			if err != nil || info == nil || info.State == nil {
 				continue
 			}
-
-			// If no healthcheck defined, consider it healthy if running
-			if info.State.Health == nil {
-				if info.State.Running {
-					return true
+			if !info.State.Running {
+				if info.State.Restarting {
+					continue
 				}
-				continue
+				return false
 			}
-
-			// Check health status
-			if info.State.Health.Status == "healthy" {
+			// No healthcheck defined: running is as good as it gets.
+			if info.State.Health == nil {
 				return true
+			}
+			switch info.State.Health.Status {
+			case "healthy":
+				return true
+			case "unhealthy":
+				return false
 			}
 		}
 	}
+}
 
-	return false
+// healthcheckDuration returns how long the container's own HEALTHCHECK can
+// take to reach a verdict: the start period, then one interval before the
+// first probe, then up to Retries failing probes (each bounded by Timeout).
+// It returns 0 when the container has no healthcheck.
+func healthcheckDuration(info *dockertypes.ContainerJSON) time.Duration {
+	if info == nil || info.Config == nil || info.Config.Healthcheck == nil {
+		return 0
+	}
+	hc := info.Config.Healthcheck
+	interval := hc.Interval
+	if interval <= 0 {
+		interval = defaultHealthProbe
+	}
+	timeout := hc.Timeout
+	if timeout <= 0 {
+		timeout = defaultHealthProbe
+	}
+	retries := hc.Retries
+	if retries <= 0 {
+		retries = defaultProbeRetries
+	}
+	return hc.StartPeriod + time.Duration(retries+1)*(interval+timeout)
+}
+
+// buildNetworkingConfig reproduces the original container's network
+// attachments (networks, aliases, static IPs, links) for its replacement.
+// Without it the new container only joins the network named by
+// HostConfig.NetworkMode and loses the service aliases that compose-managed
+// peers resolve (e.g. usulnet reaching guacd as "guacd"). The old container's
+// auto-generated short-ID alias is dropped since it belongs to that container.
+func buildNetworkingConfig(info *dockertypes.ContainerJSON) *network.NetworkingConfig {
+	if info == nil || info.NetworkSettings == nil || len(info.NetworkSettings.Networks) == 0 {
+		return nil
+	}
+	endpoints := make(map[string]*network.EndpointSettings, len(info.NetworkSettings.Networks))
+	for name, ep := range info.NetworkSettings.Networks {
+		cfg := &network.EndpointSettings{}
+		if ep != nil {
+			cfg.IPAMConfig = ep.IPAMConfig
+			cfg.Links = ep.Links
+			cfg.DriverOpts = ep.DriverOpts
+			for _, alias := range ep.Aliases {
+				if len(alias) >= 12 && strings.HasPrefix(info.ID, alias) {
+					continue
+				}
+				cfg.Aliases = append(cfg.Aliases, alias)
+			}
+		}
+		endpoints[name] = cfg
+	}
+	return &network.NetworkingConfig{EndpointsConfig: endpoints}
 }
 
 // failUpdate marks an update as failed
@@ -702,6 +804,33 @@ func (s *Service) untrackUpdate(updateID uuid.UUID) {
 	defer s.runningMu.Unlock()
 
 	delete(s.runningUpdates, updateID)
+}
+
+// reserveContainer marks a container as being updated. It returns false when
+// an update for that container is already in flight.
+func (s *Service) reserveContainer(containerID string) bool {
+	s.runningMu.Lock()
+	defer s.runningMu.Unlock()
+	if _, busy := s.runningContainers[containerID]; busy {
+		return false
+	}
+	s.runningContainers[containerID] = struct{}{}
+	return true
+}
+
+// releaseContainer clears the in-flight marker set by reserveContainer.
+func (s *Service) releaseContainer(containerID string) {
+	s.runningMu.Lock()
+	defer s.runningMu.Unlock()
+	delete(s.runningContainers, containerID)
+}
+
+// IsUpdateInProgress reports whether an update for the container is running.
+func (s *Service) IsUpdateInProgress(containerID string) bool {
+	s.runningMu.Lock()
+	defer s.runningMu.Unlock()
+	_, busy := s.runningContainers[containerID]
+	return busy
 }
 
 // ============================================================================
@@ -769,7 +898,7 @@ func (s *Service) RollbackUpdate(ctx context.Context, opts *models.RollbackOptio
 	newConfig := containerInfo.Config
 	newConfig.Image = oldImage
 
-	newID, err := s.dockerClient.ContainerCreate(ctx, newConfig, containerInfo.HostConfig, containerInfo.Name)
+	newID, err := s.dockerClient.ContainerCreate(ctx, newConfig, containerInfo.HostConfig, buildNetworkingConfig(containerInfo), containerInfo.Name)
 	if err != nil {
 		// Revert
 		s.dockerClient.ContainerRename(ctx, update.TargetID, containerInfo.Name)

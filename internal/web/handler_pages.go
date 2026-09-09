@@ -1039,18 +1039,9 @@ func (h *Handler) SettingsUpdate(w http.ResponseWriter, r *http.Request) {
 
 	var failedFields []string
 	for name, value := range fields {
-		// For checkboxes/booleans, we always want to save the state even if empty/false (handled by formatCheckbox)
-		// For strings, we might want to allow empty values to clear settings?
-		// For now, we save everything present in the map.
-
-		v := &ConfigVarView{
-			Name:    name,
-			Value:   value,
-			VarType: "string", // Everything is stored as string
-			Scope:   "global",
-		}
-
-		if err := h.services.Config().CreateVariable(ctx, v); err != nil {
+		// Settings are upserted by name so re-saving the page updates the
+		// existing global variable instead of failing on a duplicate.
+		if err := h.services.Config().UpsertSetting(ctx, name, value); err != nil {
 			slog.Error("Failed to save setting", "name", name, "error", err)
 			failedFields = append(failedFields, name)
 		}

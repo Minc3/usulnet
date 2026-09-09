@@ -34,6 +34,7 @@ type UpdateHistoryItem struct {
 	UpdatedAt     string
 	Duration      string
 	CanRollback   bool
+	ErrorMessage  string
 }
 
 type ContainerBasic struct {
@@ -403,6 +404,9 @@ templ historyTab(data UpdatesData) {
 									<span class={ "badge", templ.KV("badge-success", h.Status == "completed"), templ.KV("badge-danger", h.Status == "failed"), templ.KV("badge-warning", h.Status == "rolled_back"), templ.KV("badge-info", h.Status == "updating" || h.Status == "pulling" || h.Status == "health_check") }>
 										{ h.Status }
 									</span>
+									if h.ErrorMessage != "" {
+										<div class="text-xs text-red-400 mt-1 max-w-xs truncate" title={ h.ErrorMessage }>{ h.ErrorMessage }</div>
+									}
 								</td>
 								<td class="text-gray-400">{ h.Duration }</td>
 								<td class="text-gray-400">{ h.UpdatedAt }</td>

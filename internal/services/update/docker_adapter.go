@@ -6,10 +6,13 @@ package update
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/google/uuid"
 
 	dockerpkg "github.com/fr4nsys/usulnet/internal/docker"
@@ -73,7 +76,7 @@ func (a *DockerClientAdapter) ContainerRemove(ctx context.Context, containerID s
 	return c.ContainerRemove(ctx, containerID, force, false)
 }
 
-func (a *DockerClientAdapter) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, name string) (string, error) {
+func (a *DockerClientAdapter) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, name string) (string, error) {
 	c, err := a.getClient(ctx)
 	if err != nil {
 		return "", err
@@ -87,11 +90,51 @@ func (a *DockerClientAdapter) ContainerCreate(ctx context.Context, config *conta
 	if cli == nil {
 		return "", errors.New(errors.CodeDockerConnection, "docker client is closed")
 	}
-	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, nil, name)
+
+	// Older daemons accept only one endpoint at creation time, so create with
+	// the primary network and connect the remaining ones before start.
+	primary, extra := splitEndpoints(networkingConfig, hostConfig)
+	resp, err := cli.ContainerCreate(ctx, config, hostConfig, primary, nil, name)
 	if err != nil {
 		return "", err
 	}
+	for netName, ep := range extra {
+		if err := cli.NetworkConnect(ctx, netName, resp.ID, ep); err != nil {
+			_ = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+			return "", fmt.Errorf("connect network %q: %w", netName, err)
+		}
+	}
 	return resp.ID, nil
+}
+
+// splitEndpoints picks the endpoint to pass at creation time and returns the
+// rest to be connected afterwards. The primary is the network named by
+// HostConfig.NetworkMode when it is one of the attachments, otherwise the
+// first network by name so the choice is deterministic.
+func splitEndpoints(nc *network.NetworkingConfig, hc *container.HostConfig) (*network.NetworkingConfig, map[string]*network.EndpointSettings) {
+	if nc == nil || len(nc.EndpointsConfig) == 0 {
+		return nil, nil
+	}
+	names := make([]string, 0, len(nc.EndpointsConfig))
+	for n := range nc.EndpointsConfig {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	primary := names[0]
+	if hc != nil {
+		if mode := string(hc.NetworkMode); mode != "" {
+			if _, ok := nc.EndpointsConfig[mode]; ok {
+				primary = mode
+			}
+		}
+	}
+	extra := make(map[string]*network.EndpointSettings, len(names)-1)
+	for _, n := range names {
+		if n != primary {
+			extra[n] = nc.EndpointsConfig[n]
+		}
+	}
+	return &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{primary: nc.EndpointsConfig[primary]}}, extra
 }
 
 func (a *DockerClientAdapter) ContainerRename(ctx context.Context, containerID, newName string) error {
