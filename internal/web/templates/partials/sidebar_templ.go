@@ -919,7 +919,7 @@ func sidebarSection(key string, label string, prefs *types.SidebarPreferences) t
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</span> <i :class=\"open ? 'fa-chevron-down' : 'fa-chevron-right'\" class=\"fas text-[8px] text-gray-600 group-hover:text-gray-400 transition-colors\" aria-hidden=\"true\"></i></button><div x-show=\"open\" x-collapse class=\"space-y-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</span> <i :class=\"open ? 'fa-chevron-down' : 'fa-chevron-right'\" class=\"fas text-[8px] text-gray-600 group-hover:text-gray-400 transition-colors\" aria-hidden=\"true\"></i></button><div x-show=\"open\" x-transition.opacity.duration.150ms class=\"space-y-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

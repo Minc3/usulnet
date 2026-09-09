@@ -321,7 +321,7 @@ templ sidebarSection(key string, label string, prefs *types.SidebarPreferences) 
 				aria-hidden="true"
 			></i>
 		</button>
-		<div x-show="open" x-collapse class="space-y-1">
+		<div x-show="open" x-transition.opacity.duration.150ms class="space-y-1">
 			{ children... }
 		</div>
 	</div>
